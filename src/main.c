@@ -18,6 +18,8 @@
 int box86_log = LOG_INFO;//LOG_NONE;
 int trace_xmm = 0;
 
+extern int usefloat;
+
 void LoadLogEnv()
 {
     const char *p = getenv("BOX86_LOG");
@@ -42,6 +44,13 @@ void LoadLogEnv()
         if(strlen(p)==1) {
             if(p[0]>='0' && p[1]<='0'+1)
                 trace_xmm = p[0]-'0';
+        }
+    }
+    p = getenv("BOX86_FLOAT");
+    if(p) {
+        if(strlen(p)==1) {
+            if(p[0]>='0' && p[1]<='0'+1)
+                usefloat = p[0]-'0';
         }
     }
 }
@@ -140,6 +149,9 @@ int main(int argc, const char **argv, const char **env) {
 
     // check BOX86_LOG debug level
     LoadLogEnv();
+    if(usefloat) {
+        printf_log(LOG_INFO, "BOX86: Hack, using float instead of double for x87 emulation\n");
+    }
     
     // Create a new context
     box86context_t *context = NewBox86Context(argc - 1);

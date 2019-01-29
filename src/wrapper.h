@@ -7,6 +7,8 @@
 
 typedef struct x86emu_s x86emu_t;
 
+extern int usefloat;
+
 // the generic wrapper pointer functions
 typedef void (*wrapper_t)(x86emu_t* emu, uintptr_t fnc);
 

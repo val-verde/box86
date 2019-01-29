@@ -21,6 +21,8 @@
 #define LN2		0.69314718055994531
 #define LG2		0.3010299956639812
 
+int usefloat = 0;
+
 void RunD8(x86emu_t *emu)
 {
     uint8_t nextop;
@@ -40,7 +42,10 @@ void RunD8(x86emu_t *emu)
         case 0xC5:
         case 0xC6:
         case 0xC7:  /* FADD */
-            ST0.d += ST(nextop&7).d;
+            if(usefloat)
+                ST0.f += ST(nextop&7).f;
+            else
+                ST0.d += ST(nextop&7).d;
             break;
         case 0xC8:
         case 0xC9:
@@ -50,7 +55,10 @@ void RunD8(x86emu_t *emu)
         case 0xCD:
         case 0xCE:
         case 0xCF:  /* FMUL */
-            ST0.d *= ST(nextop&7).d;
+            if(usefloat)
+                ST0.f *= ST(nextop&7).f;
+            else
+                ST0.d *= ST(nextop&7).d;
             break;
         case 0xD0:
         case 0xD1:
@@ -60,7 +68,10 @@ void RunD8(x86emu_t *emu)
         case 0xD5:
         case 0xD6:
         case 0xD7:  /* FCOM */
-            fpu_fcom(emu, ST(nextop&7).d);
+            if(usefloat)
+                fpu_fcom_f(emu, ST(nextop&7).f);
+            else
+                fpu_fcom(emu, ST(nextop&7).d);
             break;
         case 0xD8:
         case 0xD9:
@@ -70,7 +81,10 @@ void RunD8(x86emu_t *emu)
         case 0xDD:
         case 0xDE:
         case 0xDF:  /* FCOMP */
-            fpu_fcom(emu, ST(nextop&7).d);
+            if(usefloat)
+                fpu_fcom_f(emu, ST(nextop&7).f);
+            else
+                fpu_fcom(emu, ST(nextop&7).d);
             fpu_do_pop(emu);
             break;
         case 0xE0:
@@ -81,7 +95,10 @@ void RunD8(x86emu_t *emu)
         case 0xE5:
         case 0xE6:
         case 0xE7:  /* FSUB */
-            ST0.d -= ST(nextop&7).d;
+            if(usefloat)
+                ST0.f -= ST(nextop&7).f;
+            else
+                ST0.d -= ST(nextop&7).d;
             break;
         case 0xE8:
         case 0xE9:
@@ -91,7 +108,10 @@ void RunD8(x86emu_t *emu)
         case 0xED:
         case 0xEE:
         case 0xEF:  /* FSUBR */
-            ST0.d = ST(nextop&7).d - ST0.d;
+            if(usefloat)
+                ST0.f = ST(nextop&7).f - ST0.f;
+            else
+                ST0.d = ST(nextop&7).d - ST0.d;
             break;
         case 0xF0:
         case 0xF1:
@@ -101,7 +121,10 @@ void RunD8(x86emu_t *emu)
         case 0xF5:
         case 0xF6:
         case 0xF7:  /* FDIV */
-            ST0.d /= ST(nextop&7).d;
+            if(usefloat)
+                ST0.f /= ST(nextop&7).f;
+            else
+                ST0.d /= ST(nextop&7).d;
             break;
         case 0xF8:
         case 0xF9:
@@ -111,50 +134,77 @@ void RunD8(x86emu_t *emu)
         case 0xFD:
         case 0xFE:
         case 0xFF:  /* FDIVR */
-            ST0.d = ST(nextop&7).d / ST0.d;
+            if(usefloat)
+                ST0.f = ST(nextop&7).f / ST0.f;
+            else
+                ST0.d = ST(nextop&7).d / ST0.d;
             break;
         default:
         switch((nextop>>3)&7) {
             case 0:         /* FADD ST0, float */
                 GetEd(emu, &op2, nextop);
                 *(uint32_t*)&f = op2->dword[0];
-                ST0.d += f;
+                if(usefloat)
+                    ST0.f += f;
+                else
+                    ST0.d += f;
                 break;
             case 1:         /* FMUL ST0, float */
                 GetEd(emu, &op2, nextop);
                 *(uint32_t*)&f = op2->dword[0];
-                ST0.d *= f;
+                if(usefloat)
+                    ST0.f *= f;
+                else
+                    ST0.d *= f;
                 break;
             case 2:      /* FCOM ST0, float */
                 GetEd(emu, &op2, nextop);
                 *(uint32_t*)&f = op2->dword[0];
-                fpu_fcom(emu, f);
+                if(usefloat)
+                    fpu_fcom_f(emu, f);
+                else
+                    fpu_fcom(emu, f);
                 break;
             case 3:     /* FCOMP */
                 GetEd(emu, &op2, nextop);
                 *(uint32_t*)&f = op2->dword[0];
-                fpu_fcom(emu, f);
+                if(usefloat)
+                    fpu_fcom_f(emu, f);
+                else
+                    fpu_fcom(emu, f);
                 fpu_do_pop(emu);
                 break;
             case 4:         /* FSUB ST0, float */
                 GetEd(emu, &op2, nextop);
                 *(uint32_t*)&f = op2->dword[0];
-                ST0.d -= f;
+                if(usefloat)
+                    ST0.f -= f;
+                else
+                    ST0.d -= f;
                 break;
             case 5:         /* FSUBR ST0, float */
                 GetEd(emu, &op2, nextop);
                 *(uint32_t*)&f = op2->dword[0];
-                ST0.d = f - ST0.d;
+                if(usefloat)
+                    ST0.f = f - ST0.f;
+                else
+                    ST0.d = f - ST0.d;
                 break;
             case 6:         /* FDIV ST0, float */
                 GetEd(emu, &op2, nextop);
                 *(uint32_t*)&f = op2->dword[0];
-                ST0.d /= f;
+                if(usefloat)
+                    ST0.f /= f;
+                else
+                    ST0.d /= f;
                 break;
             case 7:         /* FDIVR ST0, float */
                 GetEd(emu, &op2, nextop);
                 *(uint32_t*)&f = op2->dword[0];
-                ST0.d = f / ST0.d;
+                if(usefloat)
+                    ST0.f = f / ST0.f;
+                else
+                    ST0.d = f / ST0.d;
                 break;
             default:
                 UnimpOpcode(emu);
@@ -278,73 +328,131 @@ void RunD9(x86emu_t *emu)
             break;
 
         case 0xE0:  /* FCHS */
-            ST0.d = -ST0.d;
+            if(usefloat)
+                ST0.f = -ST0.f;
+            else
+                ST0.d = -ST0.d;
             break;
         case 0xE1:  /* FABS */
-            ST0.d = fabs(ST0.d);
+            if(usefloat)
+                ST0.f = fabs(ST0.f);
+            else
+                ST0.d = fabs(ST0.d);
             break;
         
         case 0xE5:  /* FXAM */
-            fpu_fxam(emu);
+            if(usefloat)
+                fpu_fxam_f(emu);
+            else
+                fpu_fxam(emu);
             break;
 
         case 0xE8:  /* FLD1 */
             fpu_do_push(emu);
-            ST0.d = 1.0;
+            if(usefloat)
+                ST0.f = 1.0f;
+            else
+                ST0.d = 1.0;
             break;
         case 0xE9:  /* FLDL2T */
             fpu_do_push(emu);
-            ST0.d = L2T;
+            if(usefloat)
+                ST0.f = L2T;
+            else
+                ST0.d = L2T;
             break;
         case 0xEA:  /* FLDL2E */
             fpu_do_push(emu);
-            ST0.d = L2E;
+            if(usefloat)
+                ST0.f = L2E;
+            else
+                ST0.d = L2E;
             break;
         case 0xEB:  /* FLDPI */
             fpu_do_push(emu);
-            ST0.d = PI;
+            if(usefloat)
+                ST0.f = PI;
+            else
+                ST0.d = PI;
             break;
         case 0xEC:  /* FLDLG2 */
             fpu_do_push(emu);
-            ST0.d = LG2;
+            if(usefloat)
+                ST0.f = LG2;
+            else
+                ST0.d = LG2;
             break;
         case 0xED:  /* FLDLN2 */
             fpu_do_push(emu);
-            ST0.d = LN2;
+            if(usefloat)
+                ST0.f = LN2;
+            else
+                ST0.d = LN2;
             break;
         case 0xEE:  /* FLDZ */
             fpu_do_push(emu);
-            ST0.d = 0.0;
+            if(usefloat)
+                ST0.f = 0.0f;
+            else
+                ST0.d = 0.0;
             break;
         
         case 0xF2:  /* FTAN */
-            ST0.d = tan(ST0.d);
+            if(usefloat)
+                ST0.f = tanf(ST0.f);
+            else
+                ST0.d = tan(ST0.d);
             fpu_do_push(emu);
-            ST0.d = 1.0;
+            if(usefloat)
+                ST0.f = 1.0f;
+            else
+                ST0.d = 1.0;
             break;
         case 0xF3:  /* FPATAN */
-            ST(1).d = atan2(ST(1).d, ST0.d);
+            if(usefloat)
+                ST(1).f = atan2(ST(1).f, ST0.f);
+            else
+                ST(1).d = atan2(ST(1).d, ST0.d);
             fpu_do_pop(emu);
             break;
 
         case 0xFA:  /* FSQRT */
-            ST0.d = sqrt(ST0.d);
+            if(usefloat)
+                ST0.f = sqrt(ST0.f);
+            else
+                ST0.d = sqrt(ST0.d);
             break;
         case 0xFB:  /* FSINCOS */
-            d = ST0.d;
-            ST0.d = sin(d);
-            fpu_do_push(emu);
-            ST0.d = cos(d);
+            if(usefloat) {
+                f = ST0.f;
+                ST0.f = sin(f);
+                fpu_do_push(emu);
+                ST0.f = cos(f);
+            } else {
+                d = ST0.d;
+                ST0.d = sin(d);
+                fpu_do_push(emu);
+                ST0.d = cos(d);
+            }
             break;
         case 0xFC:  /* FRNDINT */
-            ST0.d = fpu_round(emu, ST0.d);
+            if(usefloat)
+                ST0.f = fpu_round_f(emu, ST0.f);
+            else
+                ST0.d = fpu_round(emu, ST0.d);
             break;
 
         case 0xFE:  /* FSIN */
-            ST0.d = sin(ST0.d);
+            if(usefloat)
+                ST0.f = sin(ST0.f);
+            else
+                ST0.f = sin(ST0.f);
             break;
         case 0xFF:  /* FCOS */
-            ST0.d = cos(ST0.d);
+            if(usefloat)
+                ST0.f = cos(ST0.f);
+            else
+                ST0.d = cos(ST0.d);
             break;
 
 
@@ -366,18 +474,24 @@ void RunD9(x86emu_t *emu)
                 GetEd(emu, &op2, nextop);
                 *(uint32_t*)&f = op2->dword[0];
                 fpu_do_push(emu);
-                ST0.d = f;
+                if(usefloat)
+                    ST0.f = f;
+                else
+                    ST0.d = f;
                 break;
             case 2:     /* FST Ed, ST0 */
                 GetEd(emu, &op1, nextop);
-                f = ST0.d;
+                if(usefloat)
+                    f = ST0.f;
+                else
+                    f = ST0.d;
                 op1->dword[0] = *(uint32_t*)&f;
                 break;
             case 3:     /* FSTP Ed, ST0 float with partial alias on mod=3=>ST1 */
                 GetEd(emu, &op1, nextop);
-                /*if((nextop>>6)==3)    => TODO: to check
-                    f = ST1.d;
-                else*/
+                if(usefloat)
+                    f = ST0.f;
+                else                
                     f = ST0.d;
                 op1->dword[0] = *(uint32_t*)&f;
                 fpu_do_pop(emu);
@@ -476,7 +590,10 @@ void RunDA(x86emu_t *emu)
         break;
     
     case 0xE9:      /* FUCOMPP */
-        fpu_fcom(emu, ST1.d);   // bad, should handle QNaN and IA interrupt
+        if(usefloat)
+            fpu_fcom_f(emu, ST1.f);
+        else
+            fpu_fcom(emu, ST1.d);   // bad, should handle QNaN and IA interrupt
         fpu_do_pop(emu);
         fpu_do_pop(emu);
         break;
@@ -498,7 +615,10 @@ void RunDA(x86emu_t *emu)
             case 1:     /* FIMUL ST0, Ed int */
                 GetEd(emu, &op2, nextop);
                 fpu_do_push(emu);
-                ST0.d *= op2->sword[0];
+                if(usefloat)
+                    ST0.f *= op2->sword[0];
+                else
+                    ST0.d *= op2->sword[0];
                 break;
             default:
                 UnimpOpcode(emu);
@@ -527,7 +647,7 @@ void RunDB(x86emu_t *emu)
     case 0xC7:
         CHECK_FLAGS(emu);
         if(!ACCESS_FLAG(F_CF))
-            ST0.d = ST(nextop&7).d;
+            ST0.ll = ST(nextop&7).ll;
         break;
     case 0xC8:      /* FCMOVNE ST(0), ST(i) */
     case 0xC9:
@@ -539,7 +659,7 @@ void RunDB(x86emu_t *emu)
     case 0xCF:
         CHECK_FLAGS(emu);
         if(!ACCESS_FLAG(F_ZF))
-            ST0.d = ST(nextop&7).d;
+            ST0.ll = ST(nextop&7).ll;
         break;
     case 0xD0:      /* FCMOVNBE ST(0), ST(i) */
     case 0xD1:
@@ -551,7 +671,7 @@ void RunDB(x86emu_t *emu)
     case 0xD7:
         CHECK_FLAGS(emu);
         if(!(ACCESS_FLAG(F_CF) || ACCESS_FLAG(F_ZF)))
-            ST0.d = ST(nextop&7).d;
+            ST0.ll = ST(nextop&7).ll;
         break;
     case 0xD8:      /* FCMOVNU ST(0), ST(i) */
     case 0xD9:
@@ -563,7 +683,7 @@ void RunDB(x86emu_t *emu)
     case 0xDF:
         CHECK_FLAGS(emu);
         if(!ACCESS_FLAG(F_PF))
-            ST0.d = ST(nextop&7).d;
+            ST0.ll = ST(nextop&7).ll;
         break;
 
     case 0xE2:      /* FNCLEX */
@@ -590,7 +710,10 @@ void RunDB(x86emu_t *emu)
     case 0xED:
     case 0xEE:
     case 0xEF:
-        fpu_fcomi(emu, ST(nextop&7).d);   // bad, should handle QNaN and IA interrupt
+        if(usefloat)
+            fpu_fcomi_f(emu, ST(nextop&7).f);
+        else
+            fpu_fcomi(emu, ST(nextop&7).d);   // bad, should handle QNaN and IA interrupt
         break;
 
     case 0xF0:  /* FCOMI ST0, STx */
@@ -601,25 +724,37 @@ void RunDB(x86emu_t *emu)
     case 0xF5:
     case 0xF6:
     case 0xF7:
-        fpu_fcomi(emu, ST(nextop&7).d);
+        if(usefloat)
+            fpu_fcomi_f(emu, ST(nextop&7).f);
+        else
+            fpu_fcomi(emu, ST(nextop&7).d);
         break;
     default:
         switch((nextop>>3)&7) {
             case 0: /* FILD ST0, Gd */
                 GetEd(emu, &op2, nextop);
                 fpu_do_push(emu);
-                ST0.d = op2->sdword[0];
+                if(usefloat)
+                    ST0.f = op2->sdword[0];
+                else
+                    ST0.d = op2->sdword[0];
                 break;
             case 2: /* FIST Ed, ST0 */
                 GetEd(emu, &op2, nextop);
-                tmp32s = ST0.d; // TODO: Handling of FPU Exception and rounding
+                if(usefloat)
+                    tmp32s = ST0.f;
+                else
+                    tmp32s = ST0.d; // TODO: Handling of FPU Exception and rounding
                 if(tmp32s==0x7fffffff && isgreater(ST0.d, (double)(int32_t)0x7fffffff))
                     tmp32s = 0x80000000;
                 op2->sdword[0] = tmp32s;
                 break;
             case 3: /* FISTP Ed, ST0 */
                 GetEd(emu, &op2, nextop);
-                tmp32s = ST0.d; // TODO: Handling of FPU Exception and rounding
+                if(usefloat)
+                    tmp32s = ST0.f;
+                else
+                    tmp32s = ST0.d; // TODO: Handling of FPU Exception and rounding
                 if(tmp32s==0x7fffffff && isgreater(ST0.d, (double)(int32_t)0x7fffffff))
                     tmp32s = 0x80000000;
                 fpu_do_pop(emu);
@@ -630,13 +765,19 @@ void RunDB(x86emu_t *emu)
                 fpu_do_push(emu);
                 memcpy(&STld(0).ld, op2, 10);
                 LD2D(&STld(0), &ST(0).d);
+                if(usefloat)
+                    ST0.f = ST0.d;
                 STld(0).ref = ST0.ll;
                 break;
             case 7: /* FSTP tbyte */
                 GetEd(emu, &op1, nextop);
-                if(ST0.ll!=STld(0).ref)
-                    D2LD(&ST0.d, op1);
-                else
+                if(ST0.ll!=STld(0).ref) {
+                    if(usefloat) {
+                        d = ST0.f;
+                        D2LD(&d, op1);
+                    } else
+                        D2LD(&ST0.d, op1);
+                } else
                     memcpy(op1, &STld(0).ld, 10);
                 fpu_do_pop(emu);
                 break;
@@ -665,7 +806,10 @@ void RunDC(x86emu_t *emu)
         case 0xC5:
         case 0xC6:
         case 0xC7:  /* FADD */
-            ST(nextop&7).d += ST0.d;
+            if(usefloat)
+                ST(nextop&7).f += ST0.f;
+            else
+                ST(nextop&7).d += ST0.d;
             break;
         case 0xC8:
         case 0xC9:
@@ -675,7 +819,10 @@ void RunDC(x86emu_t *emu)
         case 0xCD:
         case 0xCE:
         case 0xCF:  /* FMUL */
-            ST(nextop&7).d *= ST0.d;
+            if(usefloat)
+                ST(nextop&7).f *= ST0.f;
+            else
+                ST(nextop&7).d *= ST0.d;
             break;
         case 0xD0:
         case 0xD1:
@@ -685,7 +832,10 @@ void RunDC(x86emu_t *emu)
         case 0xD5:
         case 0xD6:
         case 0xD7:  /* FCOM */
-            fpu_fcom(emu, ST(nextop&7).d);  // TODO: is this ok?
+            if(usefloat)
+                fpu_fcom_f(emu, ST(nextop&7).f);
+            else
+                fpu_fcom(emu, ST(nextop&7).d);  // TODO: is this ok or should it be reversed
             break;
         case 0xD8:
         case 0xD9:
@@ -695,7 +845,10 @@ void RunDC(x86emu_t *emu)
         case 0xDD:
         case 0xDE:
         case 0xDF:  /* FCOMP */
-            fpu_fcom(emu, ST(nextop&7).d);  // TODO: is this ok?
+            if(usefloat)
+                fpu_fcom_f(emu, ST(nextop&7).f);
+            else
+                fpu_fcom(emu, ST(nextop&7).d);  // TODO: is this ok or should the test be reversed
             fpu_do_pop(emu);
             break;
         case 0xE0:
@@ -706,7 +859,10 @@ void RunDC(x86emu_t *emu)
         case 0xE5:
         case 0xE6:
         case 0xE7:  /* FSUBR */
-            ST(nextop&7).d = ST0.d -ST(nextop&7).d;
+            if(usefloat)
+                ST(nextop&7).f = ST0.f -ST(nextop&7).f;
+            else
+                ST(nextop&7).d = ST0.d -ST(nextop&7).d;
             break;
         case 0xE8:
         case 0xE9:
@@ -716,7 +872,10 @@ void RunDC(x86emu_t *emu)
         case 0xED:
         case 0xEE:
         case 0xEF:  /* FSUB */
-            ST(nextop&7).d -= ST0.d;
+            if(usefloat)
+                ST(nextop&7).f -= ST0.f;
+            else
+                ST(nextop&7).d -= ST0.d;
             break;
         case 0xF0:
         case 0xF1:
@@ -726,7 +885,10 @@ void RunDC(x86emu_t *emu)
         case 0xF5:
         case 0xF6:
         case 0xF7:  /* FDIVR */
-            ST(nextop&7).d = ST0.d / ST(nextop&7).d;
+            if(usefloat)
+                ST(nextop&7).f = ST0.f / ST(nextop&7).f;
+            else
+                ST(nextop&7).d = ST0.d / ST(nextop&7).d;
             break;
         case 0xF8:
         case 0xF9:
@@ -736,50 +898,77 @@ void RunDC(x86emu_t *emu)
         case 0xFD:
         case 0xFE:
         case 0xFF:  /* FDIV */
-            ST(nextop&7).d /=  ST0.d;
+            if(usefloat)
+                ST(nextop&7).f /=  ST0.f;
+            else
+                ST(nextop&7).d /=  ST0.d;
             break;
         default:
         switch((nextop>>3)&7) {
         case 0:         /* FADD ST0, double */
             GetEd(emu, &op2, nextop);
             memcpy(&d, &op2->dword[0], 8);
-            ST0.d += d;
+            if(usefloat)
+                ST0.f += d;
+            else
+                ST0.d += d;
             break;
         case 1:         /* FMUL ST0, double */
             GetEd(emu, &op2, nextop);
             memcpy(&d, &op2->dword[0], 8);
-            ST0.d *= d;
+            if(usefloat)
+                ST0.f *= d;
+            else
+                ST0.d *= d;
             break;
         case 2:      /* FCOM ST0, double */
             GetEd(emu, &op2, nextop);
             memcpy(&d, &op2->dword[0], 8);
-            fpu_fcom(emu, d);
+            if(usefloat)
+                fpu_fcom_f(emu, d);
+            else
+                fpu_fcom(emu, d);
             break;
         case 3:     /* FCOMP ST0, double */
             GetEd(emu, &op2, nextop);
             memcpy(&d, &op2->dword[0], 8);
-            fpu_fcom(emu, d);
+            if(usefloat)
+                fpu_fcom_f(emu, d);
+            else
+                fpu_fcom(emu, d);
             fpu_do_pop(emu);
             break;
         case 4:         /* FSUB ST0, double */
             GetEd(emu, &op2, nextop);
             memcpy(&d, &op2->dword[0], 8);
-            ST0.d -= d;
+            if(usefloat)
+                ST0.f -= d;
+            else
+                ST0.d -= d;
             break;
         case 5:         /* FSUBR ST0, double */
             GetEd(emu, &op2, nextop);
             memcpy(&d, &op2->dword[0], 8);
-            ST0.d = d - ST0.d;
+            if(usefloat)
+                ST0.f = d - ST0.f;
+            else
+                ST0.d = d - ST0.d;
             break;
         case 6:         /* FDIV ST0, double */
             GetEd(emu, &op2, nextop);
             memcpy(&d, &op2->dword[0], 8);
-            ST0.d /= d;
+            if(usefloat)
+                ST0.f /= d;
+            else
+                ST0.d /= d;
             break;
         case 7:         /* FDIVR ST0, double */
             GetEd(emu, &op2, nextop);
             memcpy(&d, &op2->dword[0], 8);
-            ST0.d = d / ST0.d;
+            if(usefloat)
+                ST0.f = d / ST0.f;
+            else
+                ST0.d = d / ST0.d;
             break;
         default:
             UnimpOpcode(emu);
@@ -827,7 +1016,10 @@ void RunDD(x86emu_t *emu)
     case 0xE5:
     case 0xE6:
     case 0xE7:
-        fpu_fcom(emu, ST(nextop&7).d);   // bad, should handle QNaN and IA interrupt
+        if(usefloat)
+            fpu_fcom_f(emu, ST(nextop&7).f);
+        else
+            fpu_fcom(emu, ST(nextop&7).d);   // bad, should handle QNaN and IA interrupt
         break;
     case 0xE8:  /* FUCOMP ST0, STx */
     case 0xE9:
@@ -837,7 +1029,10 @@ void RunDD(x86emu_t *emu)
     case 0xED:
     case 0xEE:
     case 0xEF:
-        fpu_fcom(emu, ST(nextop&7).d);   // bad, should handle QNaN and IA interrupt
+        if(usefloat)
+            fpu_fcom_f(emu, ST(nextop&7).f);
+        else
+            fpu_fcom(emu, ST(nextop&7).d);   // bad, should handle QNaN and IA interrupt
         fpu_do_pop(emu);
         break;
 
@@ -847,14 +1042,22 @@ void RunDD(x86emu_t *emu)
                 GetEd(emu, &op1, nextop);
                 fpu_do_push(emu);
                 ST0.ll = *(int64_t*)&op1->dword[0];
+                if(usefloat)
+                    ST0.f = ST0.d;
                 break;
             case 2: /* FST double */
                 GetEd(emu, &op1, nextop);
-                *(int64_t*)&op1->dword[0] = ST0.ll;
+                if(usefloat)
+                    *(double*)&op1->dword[0] = ST0.f;
+                else
+                    *(int64_t*)&op1->dword[0] = ST0.ll;
                 break;
             case 3: /* FSTP double */
                 GetEd(emu, &op1, nextop);
-                *(int64_t*)&op1->dword[0] = ST0.ll;
+                if(usefloat)
+                    *(double*)&op1->dword[0] = ST0.f;
+                else
+                    *(int64_t*)&op1->dword[0] = ST0.ll;
                 fpu_do_pop(emu);
                 break;
             case 4: /* FRSTOR m108byte */
@@ -865,7 +1068,11 @@ void RunDD(x86emu_t *emu)
                     char* p =(char*)&op1->dword[0];
                     p += 28;
                     for (int i=0; i<8; ++i) {
-                        LD2D(p, &ST(i).d);
+                        if(usefloat) {
+                            d = ST(i).f;
+                            LD2D(p, &d);
+                        } else
+                            LD2D(p, &ST(i).d);
                         p+=10;
                     }
                 }
@@ -880,7 +1087,11 @@ void RunDD(x86emu_t *emu)
                     char* p =(char*)op1;
                     p += 28;
                     for (int i=0; i<8; ++i) {
-                        D2LD(&ST(i).d, p);
+                        if(usefloat) {
+                            D2LD(&d, p);
+                            ST(i).f = d;
+                        } else
+                            D2LD(&ST(i).d, p);
                         p+=10;
                     }
                 }
@@ -933,7 +1144,11 @@ void Run66DD(x86emu_t *emu)
                     char* p =(char*)&op1->dword[0];
                     p += 14;
                     for (int i=0; i<8; ++i) {
-                        LD2D(p, &ST(i).d);
+                        if(usefloat) {
+                            d = ST(i).f;
+                            LD2D(p, &d);
+                        } else
+                            LD2D(p, &ST(i).d);
                         p+=10;
                     }
                 }
@@ -947,7 +1162,11 @@ void Run66DD(x86emu_t *emu)
                     char* p =(char*)op1;
                     p += 14;
                     for (int i=0; i<8; ++i) {
-                        D2LD(&ST(i).d, p);
+                        if(usefloat) {
+                            D2LD(&d, p);
+                            ST(i).f = d;
+                        } else
+                            D2LD(&ST(i).d, p);
                         p+=10;
                     }
                 }
@@ -970,9 +1189,15 @@ void RunDE(x86emu_t *emu)
     nextop = Fetch8(emu);
     switch (nextop) {
     case 0xC1:  /* FADDP ST1, ST0 */
-        d = ST0.d;
-        fpu_do_pop(emu);
-        ST0.d += d;
+        if(usefloat) {
+            f = ST0.f;
+            fpu_do_pop(emu);
+            ST0.f += f;
+        } else {
+            d = ST0.d;
+            fpu_do_pop(emu);
+            ST0.d += d;
+        }
         break;
     case 0xC0:  /* FADDP STx, ST0 */
     case 0xC2:
@@ -981,11 +1206,17 @@ void RunDE(x86emu_t *emu)
     case 0xC5:
     case 0xC6:
     case 0xC7:
-        ST(nextop&7).d += ST0.d;
+        if(usefloat)
+            ST(nextop&7).f += ST0.f;
+        else
+            ST(nextop&7).d += ST0.d;
         fpu_do_pop(emu);
         break;
     case 0xC9:  /* FMULP ST1, ST0 */
-        ST1.d *= ST0.d;
+        if(usefloat)
+            ST1.f *= ST0.f;
+        else
+            ST1.d *= ST0.d;
         fpu_do_pop(emu);
         break;
     case 0xC8:  /* FMULP STx, ST0 */
@@ -995,19 +1226,31 @@ void RunDE(x86emu_t *emu)
     case 0xCD:
     case 0xCE:
     case 0xCF:
-        ST(nextop&7).d *= ST0.d;
+        if(usefloat)
+            ST(nextop&7).f *= ST0.f;
+        else
+            ST(nextop&7).d *= ST0.d;
         fpu_do_pop(emu);
         break;
     case 0xD9:  /* FCOMPP */
-        fpu_fcom(emu, ST1.d);
+        if(usefloat)
+            fpu_fcom_f(emu, ST1.f);
+        else
+            fpu_fcom(emu, ST1.d);
         fpu_do_pop(emu);
         fpu_do_pop(emu);
         break;
 
     case 0xE1:  /* FSUBRP ST1, ST0 */
-        d = ST0.d;
-        fpu_do_pop(emu);
-        ST0.d = d - ST0.d;
+        if(usefloat) {
+            f = ST0.f;
+            fpu_do_pop(emu);
+            ST0.f = f - ST0.f;
+        } else {
+            d = ST0.d;
+            fpu_do_pop(emu);
+            ST0.d = d - ST0.d;
+        }
         break;
     case 0xE0:  /* FSUBRP STx, ST0 */
     case 0xE2:
@@ -1016,11 +1259,17 @@ void RunDE(x86emu_t *emu)
     case 0xE5:
     case 0xE6:
     case 0xE7:
-        ST(nextop&7).d = ST0.d - ST(nextop&7).d;
+        if(usefloat)
+            ST(nextop&7).f = ST0.f - ST(nextop&7).f;
+        else
+            ST(nextop&7).d = ST0.d - ST(nextop&7).d;
         fpu_do_pop(emu);
         break;
    case 0xE9:  /* FSUBP ST1, ST0 */
-        ST1.d -= ST0.d;
+        if(usefloat)
+            ST1.f -= ST0.f;
+        else
+            ST1.d -= ST0.d;
         fpu_do_pop(emu);
         break;
     case 0xE8:  /* FSUBP STx, ST0 */
@@ -1030,13 +1279,22 @@ void RunDE(x86emu_t *emu)
     case 0xED:
     case 0xEE:
     case 0xEF:
-        ST(nextop&7).d -= ST0.d;
+        if(usefloat)
+            ST(nextop&7).f -= ST0.f;
+        else
+            ST(nextop&7).d -= ST0.d;
         fpu_do_pop(emu);
         break;
     case 0xF1:  /* FDIVRP ST1, ST0 */
-        d = ST0.d;
-        fpu_do_pop(emu);
-        ST0.d = d / ST0.d;
+        if(usefloat) {
+            f = ST0.f;
+            fpu_do_pop(emu);
+            ST0.f = f / ST0.f;
+        } else {
+            d = ST0.d;
+            fpu_do_pop(emu);
+            ST0.d = d / ST0.d;
+        }
         break;
     case 0xF0:  /* FDIVRP STx, ST0 */
     case 0xF2:
@@ -1045,13 +1303,22 @@ void RunDE(x86emu_t *emu)
     case 0xF5:
     case 0xF6:
     case 0xF7:
-        ST(nextop&7).d = ST0.d / ST(nextop&7).d;
+        if(usefloat)
+            ST(nextop&7).f = ST0.f / ST(nextop&7).f;
+        else
+            ST(nextop&7).d = ST0.d / ST(nextop&7).d;
         fpu_do_pop(emu);
         break;
     case 0xF9:  /* FDIVP ST1, ST0 */
-        d = ST0.d;
-        fpu_do_pop(emu);
-        ST0.d /= d;
+        if(usefloat) {
+            f = ST0.f;
+            fpu_do_pop(emu);
+            ST0.f /= f;
+        } else {
+            d = ST0.d;
+            fpu_do_pop(emu);
+            ST0.d /= d;
+        }
         break;
     case 0xF8:  /* FDIVP STx, ST0 */
     case 0xFA:
@@ -1060,7 +1327,10 @@ void RunDE(x86emu_t *emu)
     case 0xFD:
     case 0xFE:
     case 0xFF:
-        ST(nextop&7).d /= ST0.d;
+        if(usefloat)
+            ST(nextop&7).f /= ST0.f;
+        else
+            ST(nextop&7).d /= ST0.d;
         fpu_do_pop(emu);
         break;
     default:
@@ -1097,7 +1367,10 @@ void RunDF(x86emu_t *emu)
     case 0xED:
     case 0xEE:
     case 0xEF:
-        fpu_fcomi(emu, ST(nextop&7).d);   // bad, should handle QNaN and IA interrupt
+        if(usefloat)
+            fpu_fcomi_f(emu, ST(nextop&7).f);
+        else
+            fpu_fcomi(emu, ST(nextop&7).d);   // bad, should handle QNaN and IA interrupt
         fpu_do_pop(emu);
         break;
 
@@ -1109,7 +1382,10 @@ void RunDF(x86emu_t *emu)
     case 0xF5:
     case 0xF6:
     case 0xF7:
-        fpu_fcomi(emu, ST(nextop&7).d);
+        if(usefloat)
+            fpu_fcomi_f(emu, ST(nextop&7).f);
+        else
+            fpu_fcomi(emu, ST(nextop&7).d);
         fpu_do_pop(emu);
         break;
     default:
@@ -1118,17 +1394,26 @@ void RunDF(x86emu_t *emu)
             GetEw(emu, &op2, nextop);
             tmp16s = (int16_t)op2->word[0];
             fpu_do_push(emu);
-            ST0.d = tmp16s;
+            if(usefloat)
+                ST0.f = tmp16s;
+            else
+                ST0.d = tmp16s;
             break;
         case 1: /* FISTTP Ew, ST0 */
             GetEw(emu, &op2, nextop);
-            tmp16s = ST0.d;
+            if(usefloat)
+                tmp16s = ST0.f;
+            else
+                tmp16s = ST0.d;
             op2->word[0] = (uint16_t)tmp16s;
             fpu_do_pop(emu);
             break;
         case 2: /* FIST Ew, ST0 */
             GetEw(emu, &op2, nextop);
-            tmp32s = ST0.d; // Converting directly to short don't work correctly => it doesn't "saturate"
+            if(usefloat)
+                tmp32s = ST0.f;
+            else
+                tmp32s = ST0.d; // Converting directly to short don't work correctly => it doesn't "saturate"
             if((tmp32s<-32768) || (tmp32s>32767))
                 tmp16s=0x8000;
             else
@@ -1137,7 +1422,10 @@ void RunDF(x86emu_t *emu)
             break;
         case 3: /* FISTP Ew, ST0 */
             GetEw(emu, &op2, nextop);
-            tmp32s = ST0.d; // Converting directly to short don't work correctly => it doesn't "saturate"
+            if(usefloat)
+                tmp32s = ST0.f;
+            else
+                tmp32s = ST0.d; // Converting directly to short don't work correctly => it doesn't "saturate"
             if(tmp32s<-32768)
                 tmp16s=-32768;
             else if(tmp32s>32767)
@@ -1156,7 +1444,10 @@ void RunDF(x86emu_t *emu)
             GetEd(emu, &op2, nextop);
             tmp64s = *(int64_t*)&op2->dword[0];
             fpu_do_push(emu);
-            ST0.d = tmp64s;
+            if(usefloat)
+                ST0.f = tmp64s;
+            else
+                ST0.d = tmp64s;
             STll(0).ll = tmp64s;
             STll(0).ref = ST0.ll;
             break;
@@ -1173,7 +1464,10 @@ void RunDF(x86emu_t *emu)
                 if(isgreater(ST0.d, (double)(int64_t)0x7fffffffffffffffLL) || isless(ST0.d, (double)(int64_t)0x8000000000000000LL))
                     tmp64s = 0x8000000000000000LL;
                 else
-                    tmp64s = (int64_t)ST0.d;
+                    if(usefloat)
+                        tmp64s = ST0.f;
+                    else
+                        tmp64s = ST0.d;
             }
             *(int64_t*)&op1->dword[0] = tmp64s;
             fpu_do_pop(emu);

@@ -72,6 +72,27 @@ static inline void fpu_fcom(x86emu_t* emu, double b)
     }
 }
 
+static inline void fpu_fcom_f(x86emu_t* emu, float b)
+{
+    if(isnan(ST0.f) || isnan(b)) {
+        emu->sw.f.F87_C0 = 1;
+        emu->sw.f.F87_C2 = 1;
+        emu->sw.f.F87_C3 = 1;
+    } else if (isgreater(ST0.f, b)) {
+        emu->sw.f.F87_C0 = 0;
+        emu->sw.f.F87_C2 = 0;
+        emu->sw.f.F87_C3 = 0;
+    } else if (isless(ST0.f, b)) {
+        emu->sw.f.F87_C0 = 1;
+        emu->sw.f.F87_C2 = 0;
+        emu->sw.f.F87_C3 = 0;
+    } else {
+        emu->sw.f.F87_C0 = 0;
+        emu->sw.f.F87_C2 = 0;
+        emu->sw.f.F87_C3 = 1;
+    }
+}
+
 static inline void fpu_fcomi(x86emu_t* emu, double b)
 {
     RESET_FLAGS(emu);
@@ -94,6 +115,28 @@ static inline void fpu_fcomi(x86emu_t* emu, double b)
     }
 }
 
+static inline void fpu_fcomi_f(x86emu_t* emu, float b)
+{
+    RESET_FLAGS(emu);
+    if(isnan(ST0.f) || isnan(b)) {
+        emu->eflags.f.F_CF = 1;
+        emu->eflags.f.F_PF = 1;
+        emu->eflags.f.F_ZF = 1;
+    } else if (isgreater(ST0.f, b)) {
+        emu->eflags.f.F_CF = 0;
+        emu->eflags.f.F_PF = 0;
+        emu->eflags.f.F_ZF = 0;
+    } else if (isless(ST0.f, b)) {
+        emu->eflags.f.F_CF = 1;
+        emu->eflags.f.F_PF = 0;
+        emu->eflags.f.F_ZF = 0;
+    } else {
+        emu->eflags.f.F_CF = 0;
+        emu->eflags.f.F_PF = 0;
+        emu->eflags.f.F_ZF = 1;
+    }
+}
+
 static inline double fpu_round(x86emu_t* emu, double d) {
     if (!isfinite(d))
         return d;
@@ -101,8 +144,15 @@ static inline double fpu_round(x86emu_t* emu, double d) {
     return round(d);
 }
 
+static inline float fpu_round_f(x86emu_t* emu, float d) {
+    if (!isfinite(d))
+        return d;
+    //switch(emu->cw)   // TODO: implement Rounding...
+    return roundf(d);
+}
+
 static inline void fpu_fxam(x86emu_t* emu) {
-    emu->sw.f.F87_C1 = (ST0.l.upper<0)?1:0;
+    emu->sw.f.F87_C1 = (ST0.l.upper&0x80000000)?1:0;
     if(!emu->fpu_stack) {
         emu->sw.f.F87_C3 = 1;
         emu->sw.f.F87_C2 = 0;
@@ -122,6 +172,39 @@ static inline void fpu_fxam(x86emu_t* emu) {
         return;
     }
     if(ST0.d==0.0) {
+        emu->sw.f.F87_C3 = 1;
+        emu->sw.f.F87_C2 = 0;
+        emu->sw.f.F87_C0 = 0;
+        return;
+    }
+    // normal...
+    emu->sw.f.F87_C3 = 0;
+    emu->sw.f.F87_C2 = 1;
+    emu->sw.f.F87_C0 = 0;
+
+}
+
+static inline void fpu_fxam_f(x86emu_t* emu) {
+    emu->sw.f.F87_C1 = (ST0.l.lower&0x80000000)?1:0;
+    if(!emu->fpu_stack) {
+        emu->sw.f.F87_C3 = 1;
+        emu->sw.f.F87_C2 = 0;
+        emu->sw.f.F87_C0 = 1;
+        return;
+    }
+    if(isinf(ST0.f)) {  // TODO: Unsuported and denormal not analysed...
+        emu->sw.f.F87_C3 = 0;
+        emu->sw.f.F87_C2 = 1;
+        emu->sw.f.F87_C0 = 1;
+        return;
+    }
+    if(isnan(ST0.f)) {  // TODO: Unsuported and denormal not analysed...
+        emu->sw.f.F87_C3 = 0;
+        emu->sw.f.F87_C2 = 0;
+        emu->sw.f.F87_C0 = 1;
+        return;
+    }
+    if(ST0.f==0.0) {
         emu->sw.f.F87_C3 = 1;
         emu->sw.f.F87_C2 = 0;
         emu->sw.f.F87_C0 = 0;

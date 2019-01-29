@@ -98,6 +98,8 @@ typedef union ui64_s {
 
 typedef struct x86emu_s x86emu_t;
 
+extern int usefloat;
+
 // the generic wrapper pointer functions
 typedef void (*wrapper_t)(x86emu_t* emu, uintptr_t fnc);
 
@@ -202,10 +204,10 @@ typedef void (*wrapper_t)(x86emu_t* emu, uintptr_t fnc);
 				"R_EAX=(unsigned short)fn({0});",                               # W
 				"R_EAX=(uint32_t)fn({0});",                                     # u
 				"ui64_t r; r.u=(uint64_t)fn({0}); R_EAX=r.d[0]; R_EDX=r.d[1];", # U
-				"float fl=fn({0}); fpu_do_push(emu); ST0.d = fl;",              # f
-				"double db=fn({0}); fpu_do_push(emu); ST0.d = db;",             # d
-				"long double ld=fn({0}); fpu_do_push(emu); ST0.d = ld;",        # D
-				"double db=fn({0}); fpu_do_push(emu); ST0.d = db;",             # L
+				"float fl=fn({0}); fpu_do_push(emu); if(usefloat)ST0.f = fl; else ST0.d = fl;",              # f
+				"double db=fn({0}); fpu_do_push(emu); if(usefloat)ST0.f = db; else ST0.d = db;",             # d
+				"long double ld=fn({0}); fpu_do_push(emu); if(usefloat)ST0.f = ld; else ST0.d = ld;",        # D
+				"double db=fn({0}); fpu_do_push(emu); if(usefloat)ST0.f = db; else ST0.d = db;",             # L
 				"R_EAX=(uintptr_t)fn({0});",                                    # p
 				"\n#error Invalid return type: va_list\n",                      # V
 			]

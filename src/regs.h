@@ -76,8 +76,8 @@ typedef union {
     } l;
     struct {
         float lower;
-        float upper;
-    } f;
+        float f;
+    };
     int64_t ll;
 } fpu_reg_t;
 
