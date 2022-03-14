@@ -157,7 +157,7 @@ elseif(ANDROID)
     add_definitions(-DANDROID)
 elseif(ARM_DYNAREC)
     #if DYNAREC is selected alone, without any arch
-    set(CMAKE_ASM_FLAGS  "-pipe -march=armv7-a+simd -mfpu=neon")
+    set(CMAKE_ASM_FLAGS  "-pipe -march=armv7-a+fp -mfpu=neon")
 endif()
 
 if(POWER9)
